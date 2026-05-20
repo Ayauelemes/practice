@@ -341,21 +341,176 @@
     }
 
     @media (max-width: 820px) {
+      body {
+        background: #fff;
+      }
+
+      .shell {
+        width: 100%;
+        padding: 14px 12px 28px;
+      }
+
       .topbar {
         align-items: flex-start;
         flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding: 0 2px;
+      }
+
+      .brand {
+        width: 100%;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+      }
+
+      .brand h1 {
+        font-size: 26px;
+        line-height: 1.1;
+      }
+
+      .brand p {
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .admin-link {
+        width: 100%;
+        padding: 12px 14px;
       }
 
       .layout {
         grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .panel {
+        border-radius: 8px;
+        box-shadow: none;
       }
 
       .student-panel {
         position: static;
+        padding: 14px;
+      }
+
+      .quiz {
+        padding: 0;
+        border: 0;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      input, select, textarea {
+        min-height: 46px;
+        font-size: 16px;
+      }
+
+      .question {
+        padding: 14px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+      }
+
+      .question-head {
+        gap: 9px;
+        margin-bottom: 12px;
+      }
+
+      .badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+
+      .question h2 {
+        font-size: 16px;
+      }
+
+      .option {
+        grid-template-columns: 22px minmax(0, 1fr);
+        gap: 9px;
+        padding: 13px 12px;
+        min-height: 50px;
+      }
+
+      .option input {
+        width: 20px;
+        height: 20px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 4px 0 0;
+      }
+
+      .primary-btn,
+      .secondary-btn {
+        width: 100%;
+        min-height: 48px;
+        padding: 13px 14px;
+      }
+
+      .admin-view {
+        padding: 14px;
       }
 
       .admin-login {
         grid-template-columns: 1fr;
+      }
+
+      .result-card {
+        padding: 12px;
+      }
+
+      .result-meta {
+        display: grid;
+        gap: 6px;
+      }
+
+      .score-pill {
+        justify-content: center;
+        width: fit-content;
+      }
+
+      .answer-row {
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .shell {
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+      }
+
+      .brand h1 {
+        font-size: 24px;
+      }
+
+      .brand p {
+        max-width: 30ch;
+      }
+
+      .student-panel,
+      .question,
+      .admin-view {
+        padding: 12px;
+      }
+
+      .question h2 {
+        font-size: 15px;
+      }
+
+      .option {
+        font-size: 14px;
       }
     }
   </style>
