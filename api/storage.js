@@ -8,6 +8,12 @@ function hasKv() {
   return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 }
 
+function requirePersistentStorage() {
+  if (process.env.VERCEL && !hasKv()) {
+    throw new Error("Persistent storage is not configured");
+  }
+}
+
 async function kvCommand(command) {
   const response = await fetch(process.env.KV_REST_API_URL, {
     method: "POST",
@@ -41,6 +47,8 @@ async function writeLocal(items) {
 }
 
 async function saveSubmission(submission) {
+  requirePersistentStorage();
+
   if (hasKv()) {
     await kvCommand(["LPUSH", LIST_KEY, JSON.stringify(submission)]);
     return;
@@ -52,6 +60,8 @@ async function saveSubmission(submission) {
 }
 
 async function getSubmissions() {
+  requirePersistentStorage();
+
   if (hasKv()) {
     const rows = await kvCommand(["LRANGE", LIST_KEY, 0, 499]);
     return rows.map((row) => JSON.parse(row));

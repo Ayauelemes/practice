@@ -93,6 +93,9 @@ module.exports = async function handler(request, response) {
 
     send(response, 200, { ok: true });
   } catch (error) {
-    send(response, 500, { error: "Не удалось сохранить ответы." });
+    const message = error.message === "Persistent storage is not configured"
+      ? "На Vercel не подключена база для сохранения ответов. Админ должен подключить KV/Redis."
+      : "Не удалось сохранить ответы.";
+    send(response, 500, { error: message });
   }
 };

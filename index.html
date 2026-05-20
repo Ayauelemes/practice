@@ -283,6 +283,94 @@
       margin-bottom: 16px;
     }
 
+    .admin-tools {
+      display: none;
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .admin-tools.active {
+      display: grid;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: #fbfcff;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      color: var(--ink);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1.4fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .chart-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .chart-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .chart {
+      display: grid;
+      gap: 9px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 48px;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #edf1f7;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: var(--blue);
+    }
+
     .results {
       display: grid;
       gap: 12px;
@@ -466,6 +554,15 @@
         grid-template-columns: 1fr;
       }
 
+      .stats-grid,
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-row {
+        grid-template-columns: 58px minmax(0, 1fr) 44px;
+      }
+
       .result-card {
         padding: 12px;
       }
@@ -525,7 +622,7 @@
           <p>Выберите класс, ответьте на вопросы и отправьте результат учителю.</p>
         </div>
       </div>
-      <button class="admin-link" id="adminToggle" type="button">Админ</button>
+      <button class="admin-link hidden" id="adminToggle" type="button" aria-hidden="true" tabindex="-1">Админ</button>
     </div>
 
     <section class="layout" id="studentView">
@@ -579,6 +676,38 @@
         <button class="secondary-btn" id="downloadCsv" type="button">Скачать CSV</button>
       </div>
       <div class="notice" id="adminNotice"></div>
+      <div class="admin-tools" id="adminTools">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="filters">
+          <div class="field">
+            <label for="levelFilter">Уровень школы</label>
+            <select id="levelFilter">
+              <option value="all">Все уровни</option>
+              <option value="primary">Начальная школа 1-4</option>
+              <option value="middle">Средняя школа 5-8</option>
+              <option value="high">Старшая школа 9-11</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="gradeFilter">Класс</label>
+            <select id="gradeFilter">
+              <option value="all">Все классы</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="searchFilter">Поиск ученика</label>
+            <input id="searchFilter" placeholder="Имя, фамилия или группа">
+          </div>
+          <button class="secondary-btn" id="clearFilters" type="button">Сбросить</button>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-title">
+            <span>Средний результат по классам</span>
+            <span id="chartHint"></span>
+          </div>
+          <div class="chart" id="gradeChart"></div>
+        </div>
+      </div>
       <div class="results" id="results"></div>
     </section>
   </main>
@@ -660,7 +789,15 @@
       loadResults: document.querySelector("#loadResults"),
       adminNotice: document.querySelector("#adminNotice"),
       results: document.querySelector("#results"),
-      downloadCsv: document.querySelector("#downloadCsv")
+      downloadCsv: document.querySelector("#downloadCsv"),
+      adminTools: document.querySelector("#adminTools"),
+      statsGrid: document.querySelector("#statsGrid"),
+      levelFilter: document.querySelector("#levelFilter"),
+      gradeFilter: document.querySelector("#gradeFilter"),
+      searchFilter: document.querySelector("#searchFilter"),
+      clearFilters: document.querySelector("#clearFilters"),
+      gradeChart: document.querySelector("#gradeChart"),
+      chartHint: document.querySelector("#chartHint")
     };
 
     function renderQuestions() {
@@ -756,12 +893,18 @@
       els.studentView.classList.add("hidden");
       els.adminView.classList.add("active");
       hideNotice(els.notice);
+      if (location.hash !== "#admin") {
+        history.replaceState(null, "", "#admin");
+      }
     }
 
     function showQuiz() {
       els.studentView.classList.remove("hidden");
       els.adminView.classList.remove("active");
       hideNotice(els.adminNotice);
+      if (location.hash === "#admin") {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
     }
 
     async function loadResults() {
@@ -782,6 +925,8 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Не удалось загрузить результаты.");
         state.results = data.submissions || [];
+        populateGradeFilter();
+        els.adminTools.classList.add("active");
         renderResults();
       } catch (error) {
         showNotice(els.adminNotice, "err", error.message);
@@ -791,13 +936,126 @@
       }
     }
 
+    function gradeNumber(grade) {
+      const match = String(grade || "").match(/\d+/);
+      return match ? Number(match[0]) : 0;
+    }
+
+    function schoolLevel(grade) {
+      const number = gradeNumber(grade);
+      if (number >= 1 && number <= 4) return "primary";
+      if (number >= 5 && number <= 8) return "middle";
+      if (number >= 9 && number <= 11) return "high";
+      return "unknown";
+    }
+
+    function levelLabel(level) {
+      return {
+        primary: "Начальная школа",
+        middle: "Средняя школа",
+        high: "Старшая школа",
+        unknown: "Без уровня"
+      }[level] || "Все уровни";
+    }
+
+    function populateGradeFilter() {
+      const selected = els.gradeFilter.value;
+      const grades = [...new Set(state.results.map((item) => item.grade).filter(Boolean))]
+        .sort((a, b) => gradeNumber(a) - gradeNumber(b));
+      els.gradeFilter.innerHTML = `<option value="all">Все классы</option>${grades.map((grade) => `
+        <option value="${escapeHtml(grade)}">${escapeHtml(grade)}</option>
+      `).join("")}`;
+      if (grades.includes(selected)) {
+        els.gradeFilter.value = selected;
+      }
+    }
+
+    function filteredResults() {
+      const level = els.levelFilter.value;
+      const grade = els.gradeFilter.value;
+      const query = els.searchFilter.value.trim().toLowerCase();
+
+      return state.results.filter((item) => {
+        const itemLevel = schoolLevel(item.grade);
+        const text = `${item.name || ""} ${item.grade || ""} ${item.group || ""}`.toLowerCase();
+        return (level === "all" || itemLevel === level)
+          && (grade === "all" || item.grade === grade)
+          && (!query || text.includes(query));
+      });
+    }
+
+    function averageScore(items) {
+      if (items.length === 0) return 0;
+      const percent = items.reduce((sum, item) => sum + (item.score / item.total) * 100, 0) / items.length;
+      return Math.round(percent);
+    }
+
+    function renderStats(items) {
+      const avg = averageScore(items);
+      const perfect = items.filter((item) => item.score === item.total).length;
+      const weak = items.filter((item) => item.score <= Math.floor(item.total * 0.5)).length;
+      els.statsGrid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">Работ в фильтре</div>
+          <div class="stat-value">${items.length}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Средний результат</div>
+          <div class="stat-value">${avg}%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">На максимум</div>
+          <div class="stat-value">${perfect}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Нужно повторить</div>
+          <div class="stat-value">${weak}</div>
+        </div>
+      `;
+    }
+
+    function renderChart(items) {
+      const groups = new Map();
+      for (const item of items) {
+        const grade = item.grade || "Без класса";
+        if (!groups.has(grade)) groups.set(grade, []);
+        groups.get(grade).push(item);
+      }
+
+      const rows = [...groups.entries()]
+        .sort((a, b) => gradeNumber(a[0]) - gradeNumber(b[0]))
+        .map(([grade, gradeItems]) => ({
+          grade,
+          count: gradeItems.length,
+          avg: averageScore(gradeItems)
+        }));
+
+      els.chartHint.textContent = rows.length ? `${rows.length} классов` : "";
+      els.gradeChart.innerHTML = rows.length ? rows.map((row) => `
+        <div class="bar-row">
+          <strong>${escapeHtml(row.grade)}</strong>
+          <div class="bar-track"><div class="bar-fill" style="width: ${row.avg}%"></div></div>
+          <span>${row.avg}%</span>
+        </div>
+      `).join("") : "<p>Нет данных для графика.</p>";
+    }
+
     function renderResults() {
+      const items = filteredResults();
+      renderStats(items);
+      renderChart(items);
+
       if (state.results.length === 0) {
         els.results.innerHTML = "<p>Пока нет отправленных работ.</p>";
         return;
       }
 
-      els.results.innerHTML = state.results.map((item) => `
+      if (items.length === 0) {
+        els.results.innerHTML = "<p>По выбранным фильтрам ничего не найдено.</p>";
+        return;
+      }
+
+      els.results.innerHTML = items.map((item) => `
         <article class="result-card">
           <strong>${escapeHtml(item.name)}</strong>
           <div class="result-meta">
@@ -830,20 +1088,23 @@
     }
 
     function downloadCsv() {
-      if (state.results.length === 0) {
+      const items = filteredResults();
+      if (items.length === 0) {
         showNotice(els.adminNotice, "err", "Сначала загрузите результаты.");
         return;
       }
 
       const rows = [
-        ["Имя", "Класс", "Группа", "Дата", "Баллы", "Всего"],
-        ...state.results.map((item) => [
+        ["Имя", "Класс", "Уровень", "Группа", "Дата", "Баллы", "Всего", "Процент"],
+        ...items.map((item) => [
           item.name,
           item.grade,
+          levelLabel(schoolLevel(item.grade)),
           item.group || "",
           new Date(item.createdAt).toLocaleString("ru-RU"),
           item.score,
-          item.total
+          item.total,
+          `${Math.round((item.score / item.total) * 100)}%`
         ])
       ];
       const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
@@ -866,10 +1127,33 @@
       updateProgress();
       hideNotice(els.notice);
     });
+    if (location.hash === "#admin") {
+      showAdmin();
+    }
+
+    window.addEventListener("hashchange", () => {
+      if (location.hash === "#admin") showAdmin();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.altKey && event.key.toLowerCase() === "a") {
+        showAdmin();
+      }
+    });
+
     els.adminToggle.addEventListener("click", showAdmin);
     els.backToQuiz.addEventListener("click", showQuiz);
     els.loadResults.addEventListener("click", loadResults);
     els.downloadCsv.addEventListener("click", downloadCsv);
+    els.levelFilter.addEventListener("change", renderResults);
+    els.gradeFilter.addEventListener("change", renderResults);
+    els.searchFilter.addEventListener("input", renderResults);
+    els.clearFilters.addEventListener("click", () => {
+      els.levelFilter.value = "all";
+      els.gradeFilter.value = "all";
+      els.searchFilter.value = "";
+      renderResults();
+    });
   </script>
 </body>
 </html>

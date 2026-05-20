@@ -24,6 +24,9 @@ module.exports = async function handler(request, response) {
     const submissions = await getSubmissions();
     send(response, 200, { submissions });
   } catch (error) {
-    send(response, 500, { error: "Не удалось загрузить результаты." });
+    const message = error.message === "Persistent storage is not configured"
+      ? "На Vercel не подключена база для сохранения ответов. Подключите KV/Redis."
+      : "Не удалось загрузить результаты.";
+    send(response, 500, { error: message });
   }
 };
