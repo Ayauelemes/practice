@@ -673,7 +673,7 @@
       </div>
       <div class="actions">
         <button class="secondary-btn" id="backToQuiz" type="button">Вернуться к тесту</button>
-        <button class="secondary-btn" id="downloadCsv" type="button">Скачать CSV</button>
+        <button class="secondary-btn" id="downloadCsv" type="button">Скачать Excel</button>
       </div>
       <div class="notice" id="adminNotice"></div>
       <div class="admin-tools" id="adminTools">
@@ -1094,9 +1094,23 @@
         return;
       }
 
-      const rows = [
-        ["Имя", "Класс", "Уровень", "Группа", "Дата", "Баллы", "Всего", "Процент"],
-        ...items.map((item) => [
+      const headers = [
+        "Имя",
+        "Класс",
+        "Уровень",
+        "Группа",
+        "Дата",
+        "Баллы",
+        "Всего",
+        "Процент",
+        ...QUESTIONS.map((question, index) => `Вопрос ${index + 1}`),
+        ...QUESTIONS.map((question, index) => `Ответ ${index + 1}`),
+        ...QUESTIONS.map((question, index) => `Правильный ответ ${index + 1}`)
+      ];
+
+      const rows = items.map((item) => {
+        const reviewById = new Map((item.review || []).map((answer) => [answer.questionId, answer]));
+        return [
           item.name,
           item.grade,
           levelLabel(schoolLevel(item.grade)),
@@ -1104,15 +1118,41 @@
           new Date(item.createdAt).toLocaleString("ru-RU"),
           item.score,
           item.total,
-          `${Math.round((item.score / item.total) * 100)}%`
-        ])
-      ];
-      const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+          `${Math.round((item.score / item.total) * 100)}%`,
+          ...QUESTIONS.map((question) => question.text),
+          ...QUESTIONS.map((question) => reviewById.get(question.id)?.selectedText || ""),
+          ...QUESTIONS.map((question) => reviewById.get(question.id)?.correctText || "")
+        ];
+      });
+
+      const tableRows = [headers, ...rows].map((row, rowIndex) => `
+        <tr>
+          ${row.map((cell) => rowIndex === 0
+            ? `<th>${escapeHtml(cell)}</th>`
+            : `<td>${escapeHtml(cell)}</td>`
+          ).join("")}
+        </tr>
+      `).join("");
+      const excelHtml = `<!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; }
+              table { border-collapse: collapse; }
+              th, td { border: 1px solid #999; padding: 6px; vertical-align: top; }
+              th { background: #e9efff; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <table>${tableRows}</table>
+          </body>
+        </html>`;
+      const blob = new Blob(["\ufeff", excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "phishing-quiz-results.csv";
+      link.download = "phishing-quiz-results.xls";
       link.click();
       URL.revokeObjectURL(url);
     }
